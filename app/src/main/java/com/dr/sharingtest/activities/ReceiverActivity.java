@@ -1,4 +1,4 @@
-package com.dr.sharingtest;
+package com.dr.sharingtest.activities;
 
 import android.app.ProgressDialog;
 import android.content.ClipData;
@@ -6,8 +6,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -16,20 +14,24 @@ import android.os.Bundle;
 import android.text.format.Formatter;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dr.sharingtest.BuildConfig;
+import com.dr.sharingtest.R;
+import com.dr.sharingtest.model.Amplification;
+import com.dr.sharingtest.model.DataAccess;
 import com.dr.sharingtest.utils.MyConstants;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
@@ -37,13 +39,15 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import io.realm.Realm;
 
 public class ReceiverActivity extends AppCompatActivity {
 
@@ -52,7 +56,7 @@ public class ReceiverActivity extends AppCompatActivity {
     TextView tvUrl;
     TextView tvText;
     RelativeLayout rlBefore, rlAfter;
-    Button btnAmplify, btnCopy, btnShare;
+    Button btnAmplify, btnCopy, btnShare, btnMainView;
     RadioGroup rgAmp;
 
     SharedPreferences mSharedPref;
@@ -66,8 +70,15 @@ public class ReceiverActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        //hide status bar
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_receiver);
+
+
 
         initView();
         initGlobal();
@@ -131,6 +142,14 @@ public class ReceiverActivity extends AppCompatActivity {
                         startActivity(Intent.createChooser(sharingIntent, "Share via"));
                     }
                 });
+                btnMainView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(ReceiverActivity.this, LeftMenusMediaActivity.class);
+                        startActivity(intent);
+                        ReceiverActivity.this.finish();
+                    }
+                });
 
             }
         }
@@ -151,7 +170,7 @@ public class ReceiverActivity extends AppCompatActivity {
         btnAmplify = (Button)findViewById(R.id.btnAmplify);
         btnCopy = (Button)findViewById(R.id.btnCopy);
         btnShare = (Button)findViewById(R.id.btnShare);
-
+        btnMainView = (Button)findViewById(R.id.btnMainView);
     }
     void initGlobal(){
         mSharedPref = getSharedPreferences(MyConstants.KEY_SHARED_PREF, Context.MODE_PRIVATE);
@@ -159,7 +178,7 @@ public class ReceiverActivity extends AppCompatActivity {
         userName = mSharedPref.getString(MyConstants.KEY_USERNAME, "");
     }
 
-     void showResult(final boolean success){
+     void showResult(final boolean success, final String message, final String strAmp){
         Handler mainHandler = new Handler(this.getMainLooper());
 
         Runnable myRunnable = new Runnable() {
@@ -176,12 +195,56 @@ public class ReceiverActivity extends AppCompatActivity {
 
                 if (success){
                     tvUrl.setText("Upload success!");
+
+                    //create an amplification
+                    Amplification amplification = new Amplification();
+                    amplification.setReferrer("TBD");
+                    amplification.setAssetURL(message);
+                    amplification.setShareURL(shortLink);
+                    amplification.setTimeStamp(getCurrentTimeStamp());
+                    amplification.setUser(userName);
+                    int amp = Integer.parseInt(strAmp);
+                    amplification.setValue(amp);
+
+                    //save the amplification to global
+                    DataAccess.amplifications.add(amplification);
+
+                    //save the amplification to database
+                    Realm realm = Realm.getInstance(ReceiverActivity.this);
+                    realm.beginTransaction();
+
+                    // Create an object
+                    Amplification ampli = realm.createObject(Amplification.class);
+
+                    // Set its fields
+                    ampli.setReferrer("TBD");
+                    ampli.setAssetURL(message);
+                    ampli.setShareURL(shortLink);
+                    ampli.setTimeStamp(getCurrentTimeStamp());
+                    ampli.setUser(userName);
+                    ampli.setValue(amp);
+
+                    realm.commitTransaction();
+
                 }else{
                     tvUrl.setText("Upload failed!");
                 }
             } // This is your code
         };
         mainHandler.post(myRunnable);
+    }
+    public static String getCurrentTimeStamp(){
+        try {
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            String currentDateTime = dateFormat.format(new Date()); // Find todays date
+
+            return currentDateTime;
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            return "";
+        }
     }
     String getVersion(){
         /*
@@ -240,7 +303,7 @@ public class ReceiverActivity extends AppCompatActivity {
 //                        JSONArray json = new JSONArray(strResponse);
 //                    Log.i(TAG, result.toString());
 //                    if (result.toString().equals("ok")) {
-                    if(!shortLink.equals(""))  showResult(true);
+                    if(!shortLink.equals(""))  showResult(true, message,amp);
 //                    }
 
 //                    }
@@ -260,7 +323,7 @@ public class ReceiverActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     Log.e("IOException", e.toString());
 
-                    showResult(false);
+                    showResult(false, message, amp);
 
 
                 }
@@ -297,11 +360,11 @@ public class ReceiverActivity extends AppCompatActivity {
                     shortLink = joResponse.getString("href");
 
 
-                    if(!shortLink.equals(""))  showResult(true);
+                    if(!shortLink.equals(""))  showResult(true, message, amp);
 
                 } catch (Exception e) {
                     e.printStackTrace();
-                    showResult(false);
+                    showResult(false, message, amp);
                 }
 
 

@@ -15,4 +15,7 @@ public class MyConstants {
     //shared preferences
     public static final String KEY_SHARED_PREF = "keySharedPref";
     public static final String KEY_USERNAME = "keyUserName";
+
+    //sample photo
+    public static final String PHOTO_URL = "http://pengaja.com/uiapptemplate/newphotos/profileimages/0.jpg";
 }

@@ -16,17 +16,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".MainActivity"
+            android:name=".activities.MainActivity"
             android:screenOrientation="portrait">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
-        <activity
-            android:name=".ReceiverActivity"
-            android:screenOrientation="portrait">
+        <activity android:name=".activities.ReceiverActivity">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
 
@@ -41,6 +35,17 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
+        <activity android:name=".activities.SplashActivity"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".activities.LeftMenusMediaActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
     </application>
 
 </manifest>
